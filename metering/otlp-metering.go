@@ -33,13 +33,12 @@ func NewOtlpMeter(res *resource.Resource, endpoint string) (
 	}
 	reader := sdkmetric.NewPeriodicReader(exporter,
 		sdkmetric.WithProducer(otelruntime.NewProducer()))
-	mp := sdkmetric.NewMeterProvider(
-		sdkmetric.WithReader(reader), sdkmetric.WithResource(res))
-	o := &OtlpRecorder{mp: mp}
-	name := "datafarm-api/telemetry/metering"
-	if err = o.setup(name); err != nil {
-		return nil, fmt.Errorf("setup meter: %v", err)
+	sdkOpts := []sdkmetric.Option{sdkmetric.WithReader(reader)}
+	if res != nil {
+		sdkOpts = append(sdkOpts, sdkmetric.WithResource(res))
 	}
+	mp := sdkmetric.NewMeterProvider(sdkOpts...)
+	o := &OtlpRecorder{mp: mp}
 	return o, nil
 }
 
@@ -47,29 +46,45 @@ func (o *OtlpRecorder) Close(ctx context.Context) error {
 	return o.mp.Shutdown(ctx)
 }
 
-func (o *OtlpRecorder) setup(name string) (err error) {
-	if err = o.setupApiCounter(name); err != nil {
+func (o *OtlpRecorder) Setup(name string, sf ...SetupFunc) (err error) {
+	if len(sf) < 1 {
+		return o.DefaultSetup(name)
+	}
+	for _, fn := range sf {
+		if err = fn(name); err != nil {
+			break
+		}
+	}
+	return
+}
+
+func (o *OtlpRecorder) DefaultSetup(name string) (err error) {
+	if err = o.ApiCounter(name); err != nil {
 		return fmt.Errorf("setupApiCounter: %v", err)
 	}
-	if err = o.setupActiveUsersGauge(name); err != nil {
+	if err = o.ActiveUsersGauge(name); err != nil {
 		return fmt.Errorf("setupActiveUsersGauge: %v", err)
 	}
-	if err = o.setupMemoryGauge(name); err != nil {
+	if err = o.MemoryGauge(name); err != nil {
 		return fmt.Errorf("setupMemoryGauge: %v", err)
 	}
-	if err = o.setupRequestLatency(name); err != nil {
+	if err = o.RequestLatency(name); err != nil {
 		return fmt.Errorf("setupRequestLatency: %v", err)
 	}
-	if err = o.setupUptimeGauge(name); err != nil {
+	if err = o.UptimeGauge(name); err != nil {
 		return fmt.Errorf("setupUptimeGauge: %v", err)
 	}
-	if err = otelruntime.Start(); err != nil {
-		return fmt.Errorf("otelruntime Start: %v", err)
+	if err = o.OtelRunTime(name); err != nil {
+		return fmt.Errorf("otel runtime: %v", err)
 	}
 	return nil
 }
 
-func (o *OtlpRecorder) setupApiCounter(name string) (err error) {
+func (o *OtlpRecorder) OtelRunTime(_ string) (err error) {
+	return otelruntime.Start()
+}
+
+func (o *OtlpRecorder) ApiCounter(name string) (err error) {
 	meter := o.mp.Meter(name)
 	o.apiCounter, err = meter.Int64Counter(
 		name+".api.counter",
@@ -82,7 +97,7 @@ func (o *OtlpRecorder) setupApiCounter(name string) (err error) {
 	return err
 }
 
-func (o *OtlpRecorder) setupActiveUsersGauge(name string) (err error) {
+func (o *OtlpRecorder) ActiveUsersGauge(name string) (err error) {
 	meter := o.mp.Meter(name)
 	_, err = meter.Int64ObservableGauge(
 		name+".active.users.gauge",
@@ -101,7 +116,7 @@ func (o *OtlpRecorder) setupActiveUsersGauge(name string) (err error) {
 
 var processStart = time.Now().Unix()
 
-func (o *OtlpRecorder) setupUptimeGauge(name string) (err error) {
+func (o *OtlpRecorder) UptimeGauge(name string) (err error) {
 	meter := o.mp.Meter(name)
 	_, err = meter.Int64ObservableGauge(
 		name+".uptime",
@@ -118,7 +133,7 @@ func (o *OtlpRecorder) setupUptimeGauge(name string) (err error) {
 	return err
 }
 
-func (o *OtlpRecorder) setupRequestLatency(name string) (err error) {
+func (o *OtlpRecorder) RequestLatency(name string) (err error) {
 	meter := o.mp.Meter(name)
 	o.requestLatency, err = meter.Float64Histogram(
 		name+".task.duration",
@@ -131,7 +146,7 @@ func (o *OtlpRecorder) setupRequestLatency(name string) (err error) {
 	return err
 }
 
-func (o *OtlpRecorder) setupMemoryGauge(name string) (err error) {
+func (o *OtlpRecorder) MemoryGauge(name string) (err error) {
 	meter := o.mp.Meter(name)
 	_, err = meter.Int64ObservableGauge(
 		name+".memory.heap",
