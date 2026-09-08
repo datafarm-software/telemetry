@@ -18,7 +18,7 @@ type OtlpTracer struct {
 	*sdktrace.TracerProvider
 }
 
-func NewOtlpTracer(res *resource.Resource, endpoint string) (
+func NewOtlpTracer(res *resource.Resource, name, endpoint string) (
 	Tracer, error) {
 	exporter, err := otlptracehttp.New(
 		context.Background(),
@@ -37,7 +37,7 @@ func NewOtlpTracer(res *resource.Resource, endpoint string) (
 		propagation.TraceContext{}, propagation.Baggage{},
 	))
 	tracer := &OtlpTracer{
-		Tracer:         tp.Tracer("datafarm-api/telemetry/tracing"),
+		Tracer:         tp.Tracer(name),
 		TracerProvider: tp,
 	}
 	return tracer, nil
