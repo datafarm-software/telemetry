@@ -5,6 +5,8 @@ import (
 	"time"
 )
 
+type SetupFunc func(name string) error
+
 type Meter interface {
 	Close(context.Context) error
 	MemoryUsage(name string) error
