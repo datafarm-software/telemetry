@@ -28,13 +28,11 @@ func TestFromTagMetadata(t *testing.T) {
 				},
 			},
 			want: Metadata{
-				KeyValue: map[string][]string{
-					"deviceid":    {"123"},
-					"queryfields": {"1", "2", "3"},
-					"timezone":    {"Africa/Johannesburg"},
-					"start":       {"-2d"},
-					"stop":        {"now"},
-				},
+				"deviceid":    {"123"},
+				"queryfields": {"1", "2", "3"},
+				"timezone":    {"Africa/Johannesburg"},
+				"start":       {"-2d"},
+				"stop":        {"now"},
 			},
 		},
 
@@ -51,13 +49,11 @@ func TestFromTagMetadata(t *testing.T) {
 				},
 			},
 			want: Metadata{
-				KeyValue: map[string][]string{
-					"deviceid":    {"123"},
-					"queryfields": {"1", "2", "3"},
-					"timezone":    {"Africa/Johannesburg"},
-					"start":       {"-2d"},
-					"stop":        {"now"},
-				},
+				"deviceid":    {"123"},
+				"queryfields": {"1", "2", "3"},
+				"timezone":    {"Africa/Johannesburg"},
+				"start":       {"-2d"},
+				"stop":        {"now"},
 			},
 		},
 
@@ -72,26 +68,20 @@ func TestFromTagMetadata(t *testing.T) {
 				},
 			},
 			want: Metadata{
-				KeyValue: map[string][]string{
-					"deviceid":    {"123"},
-					"queryfields": {"1", "2", "3"},
-					"start":       {"-2d"},
-				},
+				"deviceid":    {"123"},
+				"queryfields": {"1", "2", "3"},
+				"start":       {"-2d"},
 			},
 		},
 
 		"dont parse struct without log tags": {
 			input: struct{ Some string }{"Some"},
-			want: Metadata{
-				KeyValue: map[string][]string{},
-			},
+			want:  Metadata{},
 		},
 
 		"dont parse pointer to struct without log tags": {
 			input: struct{ Some string }{"Some"},
-			want: Metadata{
-				KeyValue: map[string][]string{},
-			},
+			want:  Metadata{},
 		},
 
 		"parse batch sensordatarequest": {
@@ -111,11 +101,9 @@ func TestFromTagMetadata(t *testing.T) {
 				},
 			},
 			want: Metadata{
-				KeyValue: map[string][]string{
-					"deviceid":    {"1", "2"},
-					"queryfields": {"1", "2", "3", "1"},
-					"start":       {"-2d"},
-				},
+				"deviceid":    {"1", "2"},
+				"queryfields": {"1", "2", "3", "1"},
+				"start":       {"-2d"},
 			},
 		},
 
@@ -136,11 +124,9 @@ func TestFromTagMetadata(t *testing.T) {
 				},
 			},
 			want: Metadata{
-				KeyValue: map[string][]string{
-					"deviceid":    {"1", "2"},
-					"queryfields": {"1", "2", "3", "1"},
-					"start":       {"-2d"},
-				},
+				"deviceid":    {"1", "2"},
+				"queryfields": {"1", "2", "3", "1"},
+				"start":       {"-2d"},
 			},
 		},
 
@@ -150,11 +136,7 @@ func TestFromTagMetadata(t *testing.T) {
 					DeviceIds: []string{"1", "2"},
 				},
 			},
-			want: Metadata{
-				KeyValue: map[string][]string{
-					"deviceids": {"1", "2"},
-				},
-			},
+			want: Metadata{"deviceids": {"1", "2"}},
 		},
 	}
 

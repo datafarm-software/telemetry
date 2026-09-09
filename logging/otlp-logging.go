@@ -3,6 +3,7 @@ package logging
 import (
 	"context"
 	"fmt"
+	"maps"
 
 	"go.opentelemetry.io/contrib/bridges/otelzap"
 	"go.opentelemetry.io/otel/exporters/otlp/otlplog/otlploghttp"
@@ -14,6 +15,7 @@ import (
 type OtlpLogger struct {
 	*zap.Logger
 	*log.LoggerProvider
+	m Metadata
 }
 
 func NewOtlpLogger(res *resource.Resource, endpoint string) (
@@ -44,10 +46,10 @@ func (o *OtlpLogger) Close(ctx context.Context) error {
 }
 
 func makeFields(metadata Metadata) []zap.Field {
-	attrs := make([]zap.Field, 0, len(metadata.KeyValue))
+	attrs := make([]zap.Field, 0, len(metadata))
 	var field zap.Field
 	var le int
-	for k, strSlice := range metadata.KeyValue {
+	for k, strSlice := range metadata {
 		le = len(strSlice)
 		switch {
 		case le == 1:
@@ -62,6 +64,14 @@ func makeFields(metadata Metadata) []zap.Field {
 	return attrs
 }
 
+func (o *OtlpLogger) AddMetadata(m Metadata) error {
+	maps.Copy(m, o.m)
+	return nil
+}
+
+func (o *OtlpLogger) Metadata() Metadata {
+	return o.m
+}
 func (o *OtlpLogger) Info(msg string, metadata Metadata) {
 	o.Logger.Info(msg, makeFields(metadata)...)
 }
