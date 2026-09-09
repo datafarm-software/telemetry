@@ -17,6 +17,8 @@ import (
 	"go.opentelemetry.io/otel/sdk/resource"
 )
 
+type OtlpMeterOption func(*OtlpRecorder) error
+
 type OtlpRecorder struct {
 	requestLatency                             metric.Float64Histogram
 	apiCounter                                 metric.Int64Counter
@@ -28,16 +30,15 @@ type OtlpRecorder struct {
 }
 
 type OtlpOpts struct {
-	Name, Endpoint                   string
-	Res                              *resource.Resource
-	MemoryUsage, Uptime, OtelRunTime bool
+	Name, Endpoint string
+	Res            *resource.Resource
 }
 
 // NOTE: This uses insecure HTTP
-func NewOtlpMeter(opts OtlpOpts) (
+func NewOtlpMeter(otlpOpts OtlpOpts, meterOpts ...OtlpMeterOption) (
 	Meter, error) {
 	exporter, err := otlpmetrichttp.New(
-		context.Background(), otlpmetrichttp.WithEndpoint(opts.Endpoint),
+		context.Background(), otlpmetrichttp.WithEndpoint(otlpOpts.Endpoint),
 		otlpmetrichttp.WithInsecure())
 	if err != nil {
 		return nil, fmt.Errorf("init exporter: %v", err)
@@ -45,25 +46,18 @@ func NewOtlpMeter(opts OtlpOpts) (
 	reader := sdkmetric.NewPeriodicReader(exporter,
 		sdkmetric.WithProducer(otelruntime.NewProducer()))
 	sdkOpts := []sdkmetric.Option{sdkmetric.WithReader(reader)}
-	if opts.Res != nil {
-		sdkOpts = append(sdkOpts, sdkmetric.WithResource(opts.Res))
+	if otlpOpts.Res != nil {
+		sdkOpts = append(sdkOpts, sdkmetric.WithResource(otlpOpts.Res))
 	}
 	mp := sdkmetric.NewMeterProvider(sdkOpts...)
-	o := &OtlpRecorder{name: opts.Name, mp: mp}
-	if opts.MemoryUsage {
-		if err = o.MemoryUsage(o.name); err != nil {
-			return nil, fmt.Errorf("memory usage: %v", err)
+	o := &OtlpRecorder{name: otlpOpts.Name, mp: mp}
+	for _, opt := range meterOpts {
+		if err = opt(o); err != nil {
+			break
 		}
 	}
-	if opts.Uptime {
-		if err = o.Uptime(o.name); err != nil {
-			return nil, fmt.Errorf("uptime: %v", err)
-		}
-	}
-	if opts.OtelRunTime {
-		if err = o.OtelRunTime(o.name); err != nil {
-			return nil, fmt.Errorf("otelruntime: %v", err)
-		}
+	if err != nil {
+		return nil, fmt.Errorf("meter option: %v", err)
 	}
 	return o, nil
 }
@@ -72,8 +66,10 @@ func (o *OtlpRecorder) Close(ctx context.Context) error {
 	return o.mp.Shutdown(ctx)
 }
 
-func (o *OtlpRecorder) DefaultSetup(name string) (err error) {
-	return nil
+func WithOtelRuntime() OtlpMeterOption {
+	return func(o *OtlpRecorder) error {
+		return o.OtelRunTime(o.name)
+	}
 }
 
 func (o *OtlpRecorder) OtelRunTime(_ string) (err error) {
@@ -87,37 +83,13 @@ func (o *OtlpRecorder) OtelRunTime(_ string) (err error) {
 	return
 }
 
-func (o *OtlpRecorder) setupApiCounter(name string) (err error) {
-	meter := o.mp.Meter(name)
-	o.apiCounter, err = meter.Int64Counter(
-		name+".api.counter",
-		metric.WithDescription("Number of API calls."),
-		metric.WithUnit("{call}"),
-	)
-	if err != nil {
-		err = fmt.Errorf("int64Counter: %v", err)
-	}
-	return err
-}
-
-func (o *OtlpRecorder) setupActiveUsersGauge(name string) (err error) {
-	meter := o.mp.Meter(name)
-	o.activeUsersGauge, err = meter.Int64ObservableGauge(
-		name+".active.users.gauge",
-		metric.WithDescription("Active Users Gauge"),
-		metric.WithUnit("{users}"),
-		metric.WithInt64Callback(func(_ context.Context, ob metric.Int64Observer) error {
-			ob.Observe(o.activeUsersCount.Load())
-			return nil
-		}),
-	)
-	if err != nil {
-		err = fmt.Errorf("init gauge: %v", err)
-	}
-	return
-}
-
 var processStart = time.Now().Unix()
+
+func WithUptime() OtlpMeterOption {
+	return func(o *OtlpRecorder) error {
+		return o.Uptime(o.name)
+	}
+}
 
 func (o *OtlpRecorder) Uptime(name string) (err error) {
 	if o.uptimeGauge != nil {
@@ -139,17 +111,10 @@ func (o *OtlpRecorder) Uptime(name string) (err error) {
 	return err
 }
 
-func (o *OtlpRecorder) setupRequestLatency(name string) (err error) {
-	meter := o.mp.Meter(name)
-	o.requestLatency, err = meter.Float64Histogram(
-		name+".task.duration",
-		metric.WithDescription("The duration of task execution."),
-		metric.WithUnit("s"),
-	)
-	if err != nil {
-		err = fmt.Errorf("init histogram: %v", err)
+func WithMemoryUsage() OtlpMeterOption {
+	return func(o *OtlpRecorder) error {
+		return o.MemoryUsage(o.name)
 	}
-	return err
 }
 
 func (o *OtlpRecorder) MemoryUsage(name string) (err error) {
@@ -169,7 +134,26 @@ func (o *OtlpRecorder) MemoryUsage(name string) (err error) {
 		}),
 	)
 	if err != nil {
-		return fmt.Errorf("init gauge: %v", err)
+		return fmt.Errorf("init memory gauge: %v", err)
+	}
+	return err
+}
+
+func WithLatency() OtlpMeterOption {
+	return func(o *OtlpRecorder) error {
+		return o.setupRequestLatency(o.name)
+	}
+}
+
+func (o *OtlpRecorder) setupRequestLatency(name string) (err error) {
+	meter := o.mp.Meter(name)
+	o.requestLatency, err = meter.Float64Histogram(
+		name+".task.duration",
+		metric.WithDescription("The duration of task execution."),
+		metric.WithUnit("s"),
+	)
+	if err != nil {
+		err = fmt.Errorf("init histogram: %v", err)
 	}
 	return err
 }
@@ -184,6 +168,29 @@ func (o *OtlpRecorder) RecordLatency(ctx context.Context, dur time.Duration) (er
 	return nil
 }
 
+func WithActiveUsersCount() OtlpMeterOption {
+	return func(o *OtlpRecorder) error {
+		return o.setupActiveUsersGauge(o.name)
+	}
+}
+
+func (o *OtlpRecorder) setupActiveUsersGauge(name string) (err error) {
+	meter := o.mp.Meter(name)
+	o.activeUsersGauge, err = meter.Int64ObservableGauge(
+		name+".active.users.gauge",
+		metric.WithDescription("Active Users Gauge"),
+		metric.WithUnit("{users}"),
+		metric.WithInt64Callback(func(_ context.Context, ob metric.Int64Observer) error {
+			ob.Observe(o.activeUsersCount.Load())
+			return nil
+		}),
+	)
+	if err != nil {
+		err = fmt.Errorf("init gauge: %v", err)
+	}
+	return
+}
+
 func (o *OtlpRecorder) ActiveUsersCountAdd(i int) {
 	if o.activeUsersGauge == nil {
 		if err := o.setupActiveUsersGauge(o.name); err != nil {
@@ -192,6 +199,25 @@ func (o *OtlpRecorder) ActiveUsersCountAdd(i int) {
 		}
 	}
 	o.activeUsersCount.Add(int64(i))
+}
+
+func WithRequestCount() OtlpMeterOption {
+	return func(o *OtlpRecorder) error {
+		return o.setupApiCounter(o.name)
+	}
+}
+
+func (o *OtlpRecorder) setupApiCounter(name string) (err error) {
+	meter := o.mp.Meter(name)
+	o.apiCounter, err = meter.Int64Counter(
+		name+".api.counter",
+		metric.WithDescription("Number of API calls."),
+		metric.WithUnit("{call}"),
+	)
+	if err != nil {
+		err = fmt.Errorf("int64Counter: %v", err)
+	}
+	return err
 }
 
 func (o *OtlpRecorder) CountApiRequest(ctx context.Context, i int, attrMap map[string]string) {
