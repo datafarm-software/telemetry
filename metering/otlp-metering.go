@@ -20,6 +20,7 @@ import (
 type OtlpRecorder struct {
 	requestLatency   metric.Float64Histogram
 	apiCounter       metric.Int64Counter
+	activeUsersGauge metric.Int64ObservableGauge
 	name             string
 	mp               *sdkmetric.MeterProvider
 	activeUsersCount atomic.Int64
@@ -50,12 +51,6 @@ func (o *OtlpRecorder) Close(ctx context.Context) error {
 }
 
 func (o *OtlpRecorder) DefaultSetup(name string) (err error) {
-	if err = o.ActiveUsersGauge(name); err != nil {
-		return fmt.Errorf("setupActiveUsersGauge: %v", err)
-	}
-	if err = o.MemoryGauge(name); err != nil {
-		return fmt.Errorf("setupMemoryGauge: %v", err)
-	}
 	if err = o.UptimeGauge(name); err != nil {
 		return fmt.Errorf("setupUptimeGauge: %v", err)
 	}
@@ -84,7 +79,7 @@ func (o *OtlpRecorder) setupApiCounter(name string) (err error) {
 
 func (o *OtlpRecorder) setupActiveUsersGauge(name string) (err error) {
 	meter := o.mp.Meter(name)
-	_, err = meter.Int64ObservableGauge(
+	o.activeUsersGauge, err = meter.Int64ObservableGauge(
 		name+".active.users.gauge",
 		metric.WithDescription("Active Users Gauge"),
 		metric.WithUnit("{users}"),
@@ -96,7 +91,7 @@ func (o *OtlpRecorder) setupActiveUsersGauge(name string) (err error) {
 	if err != nil {
 		err = fmt.Errorf("init gauge: %v", err)
 	}
-	return err
+	return
 }
 
 var processStart = time.Now().Unix()
@@ -161,6 +156,12 @@ func (o *OtlpRecorder) RecordLatency(ctx context.Context, dur time.Duration) (er
 }
 
 func (o *OtlpRecorder) ActiveUsersCountAdd(i int) {
+	if o.activeUsersGauge == nil {
+		if err := o.setupActiveUsersGauge(o.name); err != nil {
+			log.Printf("setupActiveUsersGauge: %v", err)
+			return
+		}
+	}
 	o.activeUsersCount.Add(int64(i))
 }
 
