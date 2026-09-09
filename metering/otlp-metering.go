@@ -59,8 +59,6 @@ func NewOtlpMeter(otlpOpts OtlpOpts, meterOpts ...OtlpMeterOption) (
 	if err != nil {
 		return nil, fmt.Errorf("meter option: %v", err)
 	}
-	mp := sdkmetric.NewMeterProvider(sdkOpts...)
-	o := &OtlpRecorder{mp: mp}
 	return o, nil
 }
 
