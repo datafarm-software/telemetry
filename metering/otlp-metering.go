@@ -24,12 +24,13 @@ type OtlpRecorder struct {
 	name                                       string
 	mp                                         *sdkmetric.MeterProvider
 	activeUsersCount                           atomic.Int64
+	otelRunTimeStarted                         bool
 }
 
 type OtlpOpts struct {
-	Name, Endpoint      string
-	Res                 *resource.Resource
-	MemoryUsage, Uptime bool
+	Name, Endpoint                   string
+	Res                              *resource.Resource
+	MemoryUsage, Uptime, OtelRunTime bool
 }
 
 // NOTE: This uses insecure HTTP
@@ -59,6 +60,11 @@ func NewOtlpMeter(opts OtlpOpts) (
 			return nil, fmt.Errorf("uptime: %v", err)
 		}
 	}
+	if opts.OtelRunTime {
+		if err = o.OtelRunTime(o.name); err != nil {
+			return nil, fmt.Errorf("otelruntime: %v", err)
+		}
+	}
 	return o, nil
 }
 
@@ -67,14 +73,18 @@ func (o *OtlpRecorder) Close(ctx context.Context) error {
 }
 
 func (o *OtlpRecorder) DefaultSetup(name string) (err error) {
-	if err = o.OtelRunTime(name); err != nil {
-		return fmt.Errorf("otel runtime: %v", err)
-	}
 	return nil
 }
 
-func (o *OtlpRecorder) setupOtelRunTime(_ string) (err error) {
-	return otelruntime.Start()
+func (o *OtlpRecorder) OtelRunTime(_ string) (err error) {
+	if o.otelRunTimeStarted {
+		return
+	}
+	if err = otelruntime.Start(); err != nil {
+		return fmt.Errorf("start: %v", err)
+	}
+	o.otelRunTimeStarted = true
+	return
 }
 
 func (o *OtlpRecorder) setupApiCounter(name string) (err error) {
