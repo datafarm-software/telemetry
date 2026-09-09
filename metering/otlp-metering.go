@@ -18,19 +18,25 @@ import (
 )
 
 type OtlpRecorder struct {
-	requestLatency   metric.Float64Histogram
-	apiCounter       metric.Int64Counter
-	activeUsersGauge metric.Int64ObservableGauge
-	name             string
-	mp               *sdkmetric.MeterProvider
-	activeUsersCount atomic.Int64
+	requestLatency                             metric.Float64Histogram
+	apiCounter                                 metric.Int64Counter
+	memoryGauge, uptimeGauge, activeUsersGauge metric.Int64ObservableGauge
+	name                                       string
+	mp                                         *sdkmetric.MeterProvider
+	activeUsersCount                           atomic.Int64
+}
+
+type OtlpOpts struct {
+	Name, Endpoint      string
+	Res                 *resource.Resource
+	MemoryUsage, Uptime bool
 }
 
 // NOTE: This uses insecure HTTP
-func NewOtlpMeter(res *resource.Resource, meterName, endpoint string) (
+func NewOtlpMeter(opts OtlpOpts) (
 	Meter, error) {
 	exporter, err := otlpmetrichttp.New(
-		context.Background(), otlpmetrichttp.WithEndpoint(endpoint),
+		context.Background(), otlpmetrichttp.WithEndpoint(opts.Endpoint),
 		otlpmetrichttp.WithInsecure())
 	if err != nil {
 		return nil, fmt.Errorf("init exporter: %v", err)
@@ -38,11 +44,21 @@ func NewOtlpMeter(res *resource.Resource, meterName, endpoint string) (
 	reader := sdkmetric.NewPeriodicReader(exporter,
 		sdkmetric.WithProducer(otelruntime.NewProducer()))
 	sdkOpts := []sdkmetric.Option{sdkmetric.WithReader(reader)}
-	if res != nil {
-		sdkOpts = append(sdkOpts, sdkmetric.WithResource(res))
+	if opts.Res != nil {
+		sdkOpts = append(sdkOpts, sdkmetric.WithResource(opts.Res))
 	}
 	mp := sdkmetric.NewMeterProvider(sdkOpts...)
-	o := &OtlpRecorder{name: meterName, mp: mp}
+	o := &OtlpRecorder{name: opts.Name, mp: mp}
+	if opts.MemoryUsage {
+		if err = o.MemoryUsage(o.name); err != nil {
+			return nil, fmt.Errorf("memory usage: %v", err)
+		}
+	}
+	if opts.Uptime {
+		if err = o.Uptime(o.name); err != nil {
+			return nil, fmt.Errorf("uptime: %v", err)
+		}
+	}
 	return o, nil
 }
 
@@ -51,9 +67,6 @@ func (o *OtlpRecorder) Close(ctx context.Context) error {
 }
 
 func (o *OtlpRecorder) DefaultSetup(name string) (err error) {
-	if err = o.UptimeGauge(name); err != nil {
-		return fmt.Errorf("setupUptimeGauge: %v", err)
-	}
 	if err = o.OtelRunTime(name); err != nil {
 		return fmt.Errorf("otel runtime: %v", err)
 	}
@@ -96,9 +109,12 @@ func (o *OtlpRecorder) setupActiveUsersGauge(name string) (err error) {
 
 var processStart = time.Now().Unix()
 
-func (o *OtlpRecorder) setupUptimeGauge(name string) (err error) {
+func (o *OtlpRecorder) Uptime(name string) (err error) {
+	if o.uptimeGauge != nil {
+		return
+	}
 	meter := o.mp.Meter(name)
-	_, err = meter.Int64ObservableGauge(
+	o.uptimeGauge, err = meter.Int64ObservableGauge(
 		name+".uptime",
 		metric.WithDescription("Process Uptime"),
 		metric.WithUnit("s"),
@@ -108,7 +124,7 @@ func (o *OtlpRecorder) setupUptimeGauge(name string) (err error) {
 		}),
 	)
 	if err != nil {
-		err = fmt.Errorf("init gauge: %v", err)
+		err = fmt.Errorf("init uptime gauge: %v", err)
 	}
 	return err
 }
@@ -126,9 +142,12 @@ func (o *OtlpRecorder) setupRequestLatency(name string) (err error) {
 	return err
 }
 
-func (o *OtlpRecorder) setupMemoryGauge(name string) (err error) {
+func (o *OtlpRecorder) MemoryUsage(name string) (err error) {
+	if o.memoryGauge != nil {
+		return
+	}
 	meter := o.mp.Meter(name)
-	_, err = meter.Int64ObservableGauge(
+	o.memoryGauge, err = meter.Int64ObservableGauge(
 		name+".memory.heap",
 		metric.WithDescription("Memory usage of the allocated heap objects."),
 		metric.WithUnit("By"),
