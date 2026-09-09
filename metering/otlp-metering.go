@@ -3,6 +3,8 @@ package metering
 import (
 	"context"
 	"fmt"
+	"log"
+	"maps"
 	"runtime"
 	"sync/atomic"
 	"time"
@@ -16,14 +18,15 @@ import (
 )
 
 type OtlpRecorder struct {
-	mp               *sdkmetric.MeterProvider
-	apiCounter       metric.Int64Counter
-	activeUsersCount atomic.Int64
 	requestLatency   metric.Float64Histogram
+	apiCounter       metric.Int64Counter
+	name             string
+	mp               *sdkmetric.MeterProvider
+	activeUsersCount atomic.Int64
 }
 
 // NOTE: This uses insecure HTTP
-func NewOtlpMeter(res *resource.Resource, endpoint string) (
+func NewOtlpMeter(res *resource.Resource, meterName, endpoint string) (
 	Meter, error) {
 	exporter, err := otlpmetrichttp.New(
 		context.Background(), otlpmetrichttp.WithEndpoint(endpoint),
@@ -38,7 +41,7 @@ func NewOtlpMeter(res *resource.Resource, endpoint string) (
 		sdkOpts = append(sdkOpts, sdkmetric.WithResource(res))
 	}
 	mp := sdkmetric.NewMeterProvider(sdkOpts...)
-	o := &OtlpRecorder{mp: mp}
+	o := &OtlpRecorder{name: meterName, mp: mp}
 	return o, nil
 }
 
@@ -46,30 +49,12 @@ func (o *OtlpRecorder) Close(ctx context.Context) error {
 	return o.mp.Shutdown(ctx)
 }
 
-func (o *OtlpRecorder) Setup(name string, sf ...SetupFunc) (err error) {
-	if len(sf) < 1 {
-		return o.DefaultSetup(name)
-	}
-	for _, fn := range sf {
-		if err = fn(name); err != nil {
-			break
-		}
-	}
-	return
-}
-
 func (o *OtlpRecorder) DefaultSetup(name string) (err error) {
-	if err = o.ApiCounter(name); err != nil {
-		return fmt.Errorf("setupApiCounter: %v", err)
-	}
 	if err = o.ActiveUsersGauge(name); err != nil {
 		return fmt.Errorf("setupActiveUsersGauge: %v", err)
 	}
 	if err = o.MemoryGauge(name); err != nil {
 		return fmt.Errorf("setupMemoryGauge: %v", err)
-	}
-	if err = o.RequestLatency(name); err != nil {
-		return fmt.Errorf("setupRequestLatency: %v", err)
 	}
 	if err = o.UptimeGauge(name); err != nil {
 		return fmt.Errorf("setupUptimeGauge: %v", err)
@@ -80,11 +65,11 @@ func (o *OtlpRecorder) DefaultSetup(name string) (err error) {
 	return nil
 }
 
-func (o *OtlpRecorder) OtelRunTime(_ string) (err error) {
+func (o *OtlpRecorder) setupOtelRunTime(_ string) (err error) {
 	return otelruntime.Start()
 }
 
-func (o *OtlpRecorder) ApiCounter(name string) (err error) {
+func (o *OtlpRecorder) setupApiCounter(name string) (err error) {
 	meter := o.mp.Meter(name)
 	o.apiCounter, err = meter.Int64Counter(
 		name+".api.counter",
@@ -97,7 +82,7 @@ func (o *OtlpRecorder) ApiCounter(name string) (err error) {
 	return err
 }
 
-func (o *OtlpRecorder) ActiveUsersGauge(name string) (err error) {
+func (o *OtlpRecorder) setupActiveUsersGauge(name string) (err error) {
 	meter := o.mp.Meter(name)
 	_, err = meter.Int64ObservableGauge(
 		name+".active.users.gauge",
@@ -116,7 +101,7 @@ func (o *OtlpRecorder) ActiveUsersGauge(name string) (err error) {
 
 var processStart = time.Now().Unix()
 
-func (o *OtlpRecorder) UptimeGauge(name string) (err error) {
+func (o *OtlpRecorder) setupUptimeGauge(name string) (err error) {
 	meter := o.mp.Meter(name)
 	_, err = meter.Int64ObservableGauge(
 		name+".uptime",
@@ -133,7 +118,7 @@ func (o *OtlpRecorder) UptimeGauge(name string) (err error) {
 	return err
 }
 
-func (o *OtlpRecorder) RequestLatency(name string) (err error) {
+func (o *OtlpRecorder) setupRequestLatency(name string) (err error) {
 	meter := o.mp.Meter(name)
 	o.requestLatency, err = meter.Float64Histogram(
 		name+".task.duration",
@@ -146,7 +131,7 @@ func (o *OtlpRecorder) RequestLatency(name string) (err error) {
 	return err
 }
 
-func (o *OtlpRecorder) MemoryGauge(name string) (err error) {
+func (o *OtlpRecorder) setupMemoryGauge(name string) (err error) {
 	meter := o.mp.Meter(name)
 	_, err = meter.Int64ObservableGauge(
 		name+".memory.heap",
@@ -165,7 +150,12 @@ func (o *OtlpRecorder) MemoryGauge(name string) (err error) {
 	return err
 }
 
-func (o *OtlpRecorder) RecordLatency(ctx context.Context, dur time.Duration) error {
+func (o *OtlpRecorder) RecordLatency(ctx context.Context, dur time.Duration) (err error) {
+	if o.requestLatency == nil {
+		if err = o.setupRequestLatency(o.name); err != nil {
+			return fmt.Errorf("setupRequestLatency: %v", err)
+		}
+	}
 	o.requestLatency.Record(ctx, float64(dur))
 	return nil
 }
@@ -175,11 +165,15 @@ func (o *OtlpRecorder) ActiveUsersCountAdd(i int) {
 }
 
 func (o *OtlpRecorder) CountApiRequest(ctx context.Context, i int, attrMap map[string]string) {
-	attrs := make([]attribute.KeyValue, 0, len(attrMap))
-	for k, v := range attrMap {
-		if k == "" {
-			continue
+	if o.apiCounter == nil {
+		if err := o.setupApiCounter(o.name); err != nil {
+			log.Printf("setupApiCounter: %v", err)
+			return
 		}
+	}
+	attrs := make([]attribute.KeyValue, 0, len(attrMap))
+	maps.DeleteFunc(attrMap, func(k, v string) bool { return k == "" || v == "" })
+	for k, v := range attrMap {
 		attrs = append(attrs, attribute.String(k, v))
 	}
 	o.apiCounter.Add(ctx, int64(i), metric.WithAttributes(attrs...))
