@@ -18,6 +18,10 @@ type MockMeter struct{}
 
 func (m *MockMeter) Close(context.Context) error { return nil }
 
+func (m *MockMeter) MemoryUsage(name string) error { return nil }
+
+func (m *MockMeter) Uptime(name string) error { return nil }
+
 func (m *MockMeter) RecordLatency(ctx context.Context, dur time.Duration) error { return nil }
 
 func (m *MockMeter) ActiveUsersCountAdd(i int) {}
