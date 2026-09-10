@@ -12,6 +12,16 @@ import (
 var SpanNotFound = errors.New("no span in context")
 
 type SpanKind trace.SpanKind
+
+const (
+	SpanKindUnspecified SpanKind = 0
+	SpanKindInternal    SpanKind = 1
+	SpanKindServer      SpanKind = 2
+	SpanKindClient      SpanKind = 3
+	SpanKindProducer    SpanKind = 4
+	SpanKindConsumer    SpanKind = 5
+)
+
 type MapCarrier propagation.MapCarrier
 type Code codes.Code
 
