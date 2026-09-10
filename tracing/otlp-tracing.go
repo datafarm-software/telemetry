@@ -6,6 +6,7 @@ import (
 
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/sdk/resource"
@@ -63,6 +64,18 @@ func (o *OtlpTracer) Start(ctx context.Context, name string, kind SpanKind,
 	return retCtx, os
 }
 
+func (o *OtlpTracer) MapCarrier(ctx context.Context) MapCarrier {
+	carrier := propagation.MapCarrier{}
+	otel.GetTextMapPropagator().Inject(ctx, carrier)
+	return MapCarrier(carrier)
+}
+
+func (o *OtlpTracer) Extract(ctx context.Context, carrier MapCarrier) context.Context {
+	return otel.GetTextMapPropagator().Extract(
+		ctx, propagation.MapCarrier(carrier),
+	)
+}
+
 func (o *OtlpTracer) SpanFromContext(ctx context.Context) (Span, error) {
 	span := trace.SpanFromContext(ctx)
 	var err error
@@ -101,4 +114,8 @@ func (o *OtlpSpan) TraceId() string {
 
 func (o *OtlpSpan) SpanId() string {
 	return o.Span.SpanContext().SpanID().String()
+}
+
+func (o *OtlpSpan) SetStatus(code Code, detail string) {
+	o.Span.SetStatus(codes.Code(code), detail)
 }
