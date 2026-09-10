@@ -37,6 +37,7 @@ func NewOtlpLogger(res *resource.Resource, endpoint string) (
 		Logger: zap.New(otelzap.NewCore("datafarm-api",
 			otelzap.WithLoggerProvider(lp))),
 		LoggerProvider: lp,
+		m:              make(Metadata),
 	}
 	return l, nil
 }
@@ -65,11 +66,21 @@ func makeFields(metadata Metadata) []zap.Field {
 }
 
 func (o *OtlpLogger) AddMetadata(m Metadata) error {
-	maps.Copy(m, o.m)
+	if m == nil {
+		return nil
+	}
+	if o.m == nil {
+		o.m = m
+	} else {
+		maps.Copy(o.m, m)
+	}
 	return nil
 }
 
 func (o *OtlpLogger) Metadata() Metadata {
+	if o.m == nil {
+		return Metadata{}
+	}
 	return o.m
 }
 func (o *OtlpLogger) Info(msg string, metadata Metadata) {
