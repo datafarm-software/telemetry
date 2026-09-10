@@ -70,3 +70,5 @@ func (l *MockLogger) Close(context.Context) error         { return nil }
 func (l *MockLogger) Warn(msg string, metadata Metadata)  {}
 func (l *MockLogger) Error(msg string, metadata Metadata) {}
 func (l *MockLogger) Info(msg string, metadata Metadata)  {}
+func (l *MockLogger) AddMetadata(Metadata) error          { return nil }
+func (l *MockLogger) Metadata() Metadata                  { return Metadata{} }
