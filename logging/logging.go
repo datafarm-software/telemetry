@@ -9,7 +9,7 @@ import (
 
 type Logger interface {
 	Close(context.Context) error
-	LogAccumulator
+	LogAccumulator() LogAccumulator
 	Warn(msg string, metadata Metadata)
 	Error(msg string, metadata Metadata)
 	Info(msg string, metadata Metadata)
@@ -72,3 +72,6 @@ func (l *MockLogger) Error(msg string, metadata Metadata) {}
 func (l *MockLogger) Info(msg string, metadata Metadata)  {}
 func (l *MockLogger) AddMetadata(Metadata) error          { return nil }
 func (l *MockLogger) Metadata() Metadata                  { return Metadata{} }
+func (l *MockLogger) LogAccumulator() LogAccumulator {
+	return &DFLogAccumulator{m: make(Metadata)}
+}
