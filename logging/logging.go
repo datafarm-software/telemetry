@@ -16,7 +16,7 @@ type Logger interface {
 }
 
 type LogAccumulator interface {
-	AddMetadata(Metadata) error
+	AddMetadata(Metadata)
 	Metadata() Metadata
 }
 
