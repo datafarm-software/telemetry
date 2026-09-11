@@ -58,6 +58,7 @@ type Span interface {
 	End()
 	SetAttributes(map[string]string)
 	IsValid() bool
+	IsRecording() bool
 	TraceId() string
 	SpanId() string
 	SetStatus(code Code, detail string)
@@ -68,6 +69,7 @@ type MockSpan struct{}
 func (s *MockSpan) End()                               {}
 func (s *MockSpan) SetAttributes(map[string]string)    {}
 func (s *MockSpan) IsValid() bool                      { return false }
+func (s *MockSpan) IsRecording() bool                  { return false }
 func (s *MockSpan) TraceId() string                    { return "" }
 func (s *MockSpan) SpanId() string                     { return "" }
 func (s *MockSpan) SetStatus(code Code, detail string) {}

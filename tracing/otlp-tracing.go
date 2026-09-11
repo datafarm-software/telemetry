@@ -108,6 +108,10 @@ func (o *OtlpSpan) IsValid() bool {
 	return o.SpanContext().IsValid()
 }
 
+func (o *OtlpSpan) IsRecording() bool {
+	return o.IsRecording()
+}
+
 func (o *OtlpSpan) TraceId() string {
 	return o.Span.SpanContext().TraceID().String()
 }

@@ -6,16 +6,15 @@ type DFLogAccumulator struct {
 	m Metadata
 }
 
-func (d *DFLogAccumulator) AddMetadata(m Metadata) error {
+func (d *DFLogAccumulator) AddMetadata(m Metadata) {
 	if m == nil {
-		return nil
+		return
 	}
 	if d.m == nil {
 		d.m = m
 	} else {
 		maps.Copy(d.m, m)
 	}
-	return nil
 }
 
 func (d *DFLogAccumulator) Metadata() Metadata {
