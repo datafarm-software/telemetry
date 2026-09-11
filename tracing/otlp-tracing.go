@@ -109,7 +109,7 @@ func (o *OtlpSpan) IsValid() bool {
 }
 
 func (o *OtlpSpan) IsRecording() bool {
-	return o.IsRecording()
+	return o.Span.IsRecording()
 }
 
 func (o *OtlpSpan) TraceId() string {
