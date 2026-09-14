@@ -2,11 +2,11 @@ package logging
 
 import "maps"
 
-type DFLogAccumulator struct {
+type dFLogAccumulator struct {
 	m Metadata
 }
 
-func (d *DFLogAccumulator) AddMetadata(m Metadata) {
+func (d *dFLogAccumulator) AddMetadata(m Metadata) {
 	if m == nil {
 		return
 	}
@@ -17,7 +17,7 @@ func (d *DFLogAccumulator) AddMetadata(m Metadata) {
 	}
 }
 
-func (d *DFLogAccumulator) Metadata() Metadata {
+func (d *dFLogAccumulator) Metadata() Metadata {
 	if d.m == nil {
 		return Metadata{}
 	}

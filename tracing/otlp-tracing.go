@@ -50,7 +50,7 @@ func (o *OtlpTracer) Close(ctx context.Context) error {
 
 func (o *OtlpTracer) Start(ctx context.Context, name string, kind SpanKind,
 	mapAttrs map[string]string) (retCtx context.Context, s Span) {
-	attrs := make([]attribute.KeyValue, 0, len(mapAttrs)+1)
+	attrs := make([]attribute.KeyValue, 0, len(mapAttrs))
 	for k, v := range mapAttrs {
 		if k == "" {
 			continue

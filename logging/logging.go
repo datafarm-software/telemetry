@@ -64,14 +64,16 @@ func FromTagMetadata(a any) (m Metadata, err error) {
 	return w.metadata, err
 }
 
-type MockLogger struct{}
+func MockLogger() Logger { return &mockLogger{} }
 
-func (l *MockLogger) Close(context.Context) error         { return nil }
-func (l *MockLogger) Warn(msg string, metadata Metadata)  {}
-func (l *MockLogger) Error(msg string, metadata Metadata) {}
-func (l *MockLogger) Info(msg string, metadata Metadata)  {}
-func (l *MockLogger) AddMetadata(Metadata) error          { return nil }
-func (l *MockLogger) Metadata() Metadata                  { return Metadata{} }
-func (l *MockLogger) LogAccumulator() LogAccumulator {
-	return &DFLogAccumulator{m: make(Metadata)}
+type mockLogger struct{}
+
+func (l *mockLogger) Close(context.Context) error         { return nil }
+func (l *mockLogger) Warn(msg string, metadata Metadata)  {}
+func (l *mockLogger) Error(msg string, metadata Metadata) {}
+func (l *mockLogger) Info(msg string, metadata Metadata)  {}
+func (l *mockLogger) AddMetadata(Metadata) error          { return nil }
+func (l *mockLogger) Metadata() Metadata                  { return Metadata{} }
+func (l *mockLogger) LogAccumulator() LogAccumulator {
+	return &dFLogAccumulator{m: make(Metadata)}
 }
