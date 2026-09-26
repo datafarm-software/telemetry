@@ -34,23 +34,25 @@ type Tracer interface {
 	Extract(context.Context, MapCarrier) context.Context
 }
 
-type MockTracer struct{}
+func MockTracer() Tracer { return &mockTracer{} }
 
-func (t *MockTracer) Close(context.Context) error { return nil }
-func (t *MockTracer) Start(context.Context, string, SpanKind, map[string]string) (
+type mockTracer struct{}
+
+func (t *mockTracer) Close(context.Context) error { return nil }
+func (t *mockTracer) Start(context.Context, string, SpanKind, map[string]string) (
 	context.Context, Span) {
-	return context.Background(), &MockSpan{}
+	return context.Background(), &mockSpan{}
 }
 
-func (t *MockTracer) SpanFromContext(ctx context.Context) (Span, error) {
-	return &MockSpan{}, nil
+func (t *mockTracer) SpanFromContext(ctx context.Context) (Span, error) {
+	return &mockSpan{}, nil
 }
 
-func (t *MockTracer) MapCarrier(ctx context.Context) MapCarrier {
+func (t *mockTracer) MapCarrier(ctx context.Context) MapCarrier {
 	return MapCarrier{}
 }
 
-func (t *MockTracer) Extract(ctx context.Context, _ MapCarrier) context.Context {
+func (t *mockTracer) Extract(ctx context.Context, _ MapCarrier) context.Context {
 	return ctx
 }
 
@@ -64,12 +66,14 @@ type Span interface {
 	SetStatus(code Code, detail string)
 }
 
-type MockSpan struct{}
+func MockSpan() Span { return &mockSpan{} }
 
-func (s *MockSpan) End()                               {}
-func (s *MockSpan) SetAttributes(map[string]string)    {}
-func (s *MockSpan) IsValid() bool                      { return false }
-func (s *MockSpan) IsRecording() bool                  { return false }
-func (s *MockSpan) TraceId() string                    { return "" }
-func (s *MockSpan) SpanId() string                     { return "" }
-func (s *MockSpan) SetStatus(code Code, detail string) {}
+type mockSpan struct{}
+
+func (s *mockSpan) End()                               {}
+func (s *mockSpan) SetAttributes(map[string]string)    {}
+func (s *mockSpan) IsValid() bool                      { return false }
+func (s *mockSpan) IsRecording() bool                  { return false }
+func (s *mockSpan) TraceId() string                    { return "" }
+func (s *mockSpan) SpanId() string                     { return "" }
+func (s *mockSpan) SetStatus(code Code, detail string) {}

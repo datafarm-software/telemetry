@@ -16,16 +16,18 @@ type Meter interface {
 	CountApiRequest(ctx context.Context, i int, attr map[string]string)
 }
 
-type MockMeter struct{}
+func MockMeter() Meter { return &mockMeter{} }
 
-func (m *MockMeter) Close(context.Context) error { return nil }
+type mockMeter struct{}
 
-func (m *MockMeter) MemoryUsage(name string) error { return nil }
+func (m *mockMeter) Close(context.Context) error { return nil }
 
-func (m *MockMeter) Uptime(name string) error { return nil }
+func (m *mockMeter) MemoryUsage(name string) error { return nil }
 
-func (m *MockMeter) RecordLatency(ctx context.Context, dur time.Duration) error { return nil }
+func (m *mockMeter) Uptime(name string) error { return nil }
 
-func (m *MockMeter) ActiveUsersCountAdd(i int) {}
+func (m *mockMeter) RecordLatency(ctx context.Context, dur time.Duration) error { return nil }
 
-func (m *MockMeter) CountApiRequest(ctx context.Context, i int, attr map[string]string) {}
+func (m *mockMeter) ActiveUsersCountAdd(i int) {}
+
+func (m *mockMeter) CountApiRequest(ctx context.Context, i int, attr map[string]string) {}

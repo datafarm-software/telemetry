@@ -19,7 +19,7 @@ type OtlpTracer struct {
 	*sdktrace.TracerProvider
 }
 
-func NewOtlpTracer(res *resource.Resource, name, endpoint string) (
+func NewOtlpTracer(res *resource.Resource, name, endpoint string, sampleRatio float64) (
 	Tracer, error) {
 	exporter, err := otlptracehttp.New(
 		context.Background(),
@@ -32,6 +32,8 @@ func NewOtlpTracer(res *resource.Resource, name, endpoint string) (
 	tp := sdktrace.NewTracerProvider(
 		sdktrace.WithBatcher(exporter),
 		sdktrace.WithResource(res),
+		sdktrace.WithSampler(sdktrace.ParentBased(sdktrace.TraceIDRatioBased(
+			sampleRatio))),
 	)
 	otel.SetTracerProvider(tp)
 	otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(
@@ -50,7 +52,7 @@ func (o *OtlpTracer) Close(ctx context.Context) error {
 
 func (o *OtlpTracer) Start(ctx context.Context, name string, kind SpanKind,
 	mapAttrs map[string]string) (retCtx context.Context, s Span) {
-	attrs := make([]attribute.KeyValue, 0, len(mapAttrs)+1)
+	attrs := make([]attribute.KeyValue, 0, len(mapAttrs))
 	for k, v := range mapAttrs {
 		if k == "" {
 			continue
