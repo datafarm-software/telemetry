@@ -63,7 +63,7 @@ func makeFields(metadata Metadata) []zap.Field {
 }
 
 func (o *OtlpLogger) LogAccumulator() LogAccumulator {
-	return &DFLogAccumulator{m: make(Metadata)}
+	return &dFLogAccumulator{m: make(Metadata)}
 }
 
 func (o *OtlpLogger) Info(msg string, metadata Metadata) {
