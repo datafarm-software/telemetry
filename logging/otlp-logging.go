@@ -32,7 +32,7 @@ func NewOtlpLogger(res *resource.Resource, endpoint string) (
 		log.WithResource(res),
 	)
 	l := &OtlpLogger{
-		Logger: zap.New(otelzap.NewCore("datafarm-api",
+		Logger: zap.New(otelzap.NewCore("datafarm-software",
 			otelzap.WithLoggerProvider(lp))),
 		LoggerProvider: lp,
 	}
