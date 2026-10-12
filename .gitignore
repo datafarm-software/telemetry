@@ -35,3 +35,6 @@ config.yml
 
 # all generated files
 *.generated.*
+
+#Lib repo so ignore main. Used for compile checks
+main.go

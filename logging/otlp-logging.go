@@ -32,7 +32,7 @@ func NewOtlpLogger(res *resource.Resource, endpoint string) (
 		log.WithResource(res),
 	)
 	l := &OtlpLogger{
-		Logger: zap.New(otelzap.NewCore("datafarm-api",
+		Logger: zap.New(otelzap.NewCore("datafarm-software",
 			otelzap.WithLoggerProvider(lp))),
 		LoggerProvider: lp,
 	}
@@ -63,7 +63,7 @@ func makeFields(metadata Metadata) []zap.Field {
 }
 
 func (o *OtlpLogger) LogAccumulator() LogAccumulator {
-	return &DFLogAccumulator{m: make(Metadata)}
+	return &dFLogAccumulator{m: make(Metadata)}
 }
 
 func (o *OtlpLogger) Info(msg string, metadata Metadata) {
