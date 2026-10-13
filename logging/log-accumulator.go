@@ -24,7 +24,7 @@ func (d *dFLogAccumulator) Metadata() Metadata {
 	return d.m
 }
 
-func (d *dFLogAccumulator) LogFromTag(a any) error {
+func (d *dFLogAccumulator) Struct(a any) error {
 	m, err := FromTagMetadata(a)
 	if err != nil {
 		return err

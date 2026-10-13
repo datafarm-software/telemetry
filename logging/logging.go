@@ -18,7 +18,7 @@ type Logger interface {
 type LogAccumulator interface {
 	AddMetadata(Metadata)
 	Metadata() Metadata
-	LogFromTag(any) error
+	Struct(any) error
 }
 
 type Metadata map[string][]string
