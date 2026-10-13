@@ -17,4 +17,5 @@ func main() {
 	_ = tracing.Tracer(tracer)
 	logger := &logging.OtlpLogger{}
 	_ = logging.Logger(logger)
+	_ = logger.LogAccumulator()
 }

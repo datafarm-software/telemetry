@@ -18,6 +18,7 @@ type Logger interface {
 type LogAccumulator interface {
 	AddMetadata(Metadata)
 	Metadata() Metadata
+	LogFromTag(any) error
 }
 
 type Metadata map[string][]string
@@ -40,8 +41,7 @@ func (w *metadataWalker) StructField(
 	switch value.Kind() {
 	case reflect.String:
 		if value.String() != "" {
-			w.metadata[tag] =
-				append(w.metadata[tag], value.String())
+			w.metadata[tag] = append(w.metadata[tag], value.String())
 		}
 	case reflect.Slice:
 		for i := range value.Len() {
@@ -49,8 +49,7 @@ func (w *metadataWalker) StructField(
 			if elem.Kind() != reflect.String || elem.String() == "" {
 				continue
 			}
-			w.metadata[tag] =
-				append(w.metadata[tag], elem.String())
+			w.metadata[tag] = append(w.metadata[tag], elem.String())
 		}
 	}
 	return nil
