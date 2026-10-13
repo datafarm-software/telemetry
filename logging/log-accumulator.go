@@ -23,3 +23,12 @@ func (d *dFLogAccumulator) Metadata() Metadata {
 	}
 	return d.m
 }
+
+func (d *dFLogAccumulator) LogFromTag(a any) error {
+	m, err := FromTagMetadata(a)
+	if err != nil {
+		return err
+	}
+	d.AddMetadata(m)
+	return nil
+}
