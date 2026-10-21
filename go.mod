@@ -3,6 +3,8 @@ module github.com/datafarm-software/telemetry
 go 1.26.0
 
 require (
+	github.com/danielgtaylor/huma/v2 v2.39.1
+	github.com/gorilla/mux v1.8.1
 	github.com/mitchellh/reflectwalk v1.0.2
 	go.opentelemetry.io/contrib/bridges/otelzap v0.21.0
 	go.opentelemetry.io/contrib/instrumentation/runtime v0.72.0
