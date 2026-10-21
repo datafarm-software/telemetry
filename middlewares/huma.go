@@ -76,8 +76,10 @@ func (m *humaProvider) TraceRequest(humaCtx huma.Context, next func(huma.Context
 		ctx, path, tracing.SpanKind(trace.SpanKindServer),
 		map[string]string{"http.method": humaCtx.Method()},
 	)
-	next(huma.WithContext(humaCtx, ctx))
-	span.End()
+	defer span.End()
+	r, w := humamux.Unwrap(humaCtx)
+	r.WithContext(ctx)
+	next(humamux.NewContext(humaCtx.Operation(), r, w))
 }
 
 func (m *humaProvider) LogRequest(humaCtx huma.Context, next func(huma.Context)) {
