@@ -3,6 +3,7 @@ package telemetry
 import (
 	"context"
 	"fmt"
+	"log"
 
 	"github.com/datafarm-software/telemetry/logging"
 	"github.com/datafarm-software/telemetry/metering"
@@ -53,6 +54,19 @@ func NewTelemetry(opts Opts) (t *Telemetry, err error) {
 		return nil, fmt.Errorf("init meter: %v", err)
 	}
 	return t, nil
+}
+
+func (t *Telemetry) Close(ctx context.Context) (err error) {
+	if err = t.Logger.Close(ctx); err != nil {
+		log.Printf("closing logger: %v", err)
+	}
+	if err = t.Tracer.Close(ctx); err != nil {
+		log.Printf("closing tracer: %v", err)
+	}
+	if err = t.Meter.Close(ctx); err != nil {
+		log.Printf("closing meter: %v", err)
+	}
+	return nil
 }
 
 func main() {
