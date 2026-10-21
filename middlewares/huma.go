@@ -43,7 +43,7 @@ func (m *humaProvider) RecordLatency(humaCtx huma.Context, next func(huma.Contex
 	start := time.Now()
 	defer func() {
 		duration := time.Since(start)
-		if err := m.Meter.RecordLatency(ctx, duration); err != nil {
+		if err := m.Telemetry.Meter.RecordLatency(ctx, duration); err != nil {
 			w.Write([]byte("Internal error while recording latency of the request. Please notify a system administrator."))
 			log.Printf("recordLatency: %v", err)
 		}
@@ -53,7 +53,7 @@ func (m *humaProvider) RecordLatency(humaCtx huma.Context, next func(huma.Contex
 
 func (m *humaProvider) CountApiRequest(humaCtx huma.Context, next func(huma.Context)) {
 	path := getPath(humaCtx)
-	m.Meter.CountApiRequest(humaCtx.Context(), 1,
+	m.Telemetry.Meter.CountApiRequest(humaCtx.Context(), 1,
 		map[string]string{
 			"http.route":  path,
 			"http.method": humaCtx.Method(),
@@ -72,7 +72,7 @@ func (m *humaProvider) TraceRequest(humaCtx huma.Context, next func(huma.Context
 		humaCtx.Context(), propagation.MapCarrier(headerMap),
 	)
 	var span tracing.Span
-	ctx, span = m.Tracer.Start(
+	ctx, span = m.Telemetry.Tracer.Start(
 		ctx, path, tracing.SpanKind(trace.SpanKindServer),
 		map[string]string{"http.method": humaCtx.Method()},
 	)
@@ -81,12 +81,12 @@ func (m *humaProvider) TraceRequest(humaCtx huma.Context, next func(huma.Context
 }
 
 func (m *humaProvider) LogRequest(humaCtx huma.Context, next func(huma.Context)) {
-	log := m.Logger.LogAccumulator()
+	log := m.Telemetry.Logger.LogAccumulator()
 	log.AddMetadata(logging.Metadata{
 		"http.method": {humaCtx.Method()},
 		"http.route":  {getPath(humaCtx)},
 	})
-	span, _ := m.Tracer.SpanFromContext(humaCtx.Context())
+	span, _ := m.Telemetry.Tracer.SpanFromContext(humaCtx.Context())
 	if span.IsValid() {
 		log.AddMetadata(logging.Metadata{
 			"trace_id": {span.TraceId()},
@@ -100,11 +100,11 @@ func (m *humaProvider) LogRequest(humaCtx huma.Context, next func(huma.Context))
 	})
 	switch getFirstDigit(humaCtx.Status()) {
 	case 4:
-		m.Logger.Warn("HTTP Client Error", log.Metadata())
+		m.Telemetry.Logger.Warn("HTTP Client Error", log.Metadata())
 	case 5:
-		m.Logger.Error("HTTP Internal Error", log.Metadata())
+		m.Telemetry.Logger.Error("HTTP Internal Error", log.Metadata())
 	default:
-		m.Logger.Info("HTTP Client Request", log.Metadata())
+		m.Telemetry.Logger.Info("HTTP Client Request", log.Metadata())
 	}
 }
 
